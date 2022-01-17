@@ -67,6 +67,17 @@
   (set-mark p)
   (setq deactivate-mark nil))
 
+(defun single-line-p ()
+  (let ((p1 (region-beginning))
+        (p2 (region-end)))
+    (and mark-active
+         (or (and (= (region-beginning) (line-beginning-position))
+                  (= (region-end) (line-end-position)))
+             (save-excursion
+               (previous-line)
+               (or (and (= p1 (line-beginning-position))
+                        (= (- p2 1) (line-end-position)))))))))
+
 ;;;###autoload
 (defun duplicate-thing (n)
   "Duplicate line or region N times.
@@ -75,9 +86,9 @@ If it doesn't have active mark, it will select current line and duplicate it.
 
 If the selection is smaller than a line, separations will be whitespace. Otherwise, separations will be newlines."
   (interactive "P")
-  (let ((region-is-whole-line (and (<= (region-beginning) (line-beginning-position))
-                                   (<= (line-end-position) (region-end)))))
-    (if (and mark-active (not region-is-whole-line))
+  (let ((region-is-lines (and (<= (region-beginning) (line-beginning-position))
+                              (<= (line-end-position) (region-end)))))
+    (if (and mark-active (not region-is-lines))
         (progn
           (kill-ring-save (region-beginning) (region-end))
           (insert " ")
@@ -93,7 +104,8 @@ If the selection is smaller than a line, separations will be whitespace. Otherwi
                 len  (- p2 p1)
                 text (buffer-substring p1 p2)
                 with-comment-out (consp n))
-          (insert "\n")
+          (if (not (single-line-p))
+              (insert "\n"))
           (duplicate-thing-at (point) text n)))))
   (setq transient-mark-mode (cons 'only t)))
 
