@@ -70,23 +70,31 @@
 ;;;###autoload
 (defun duplicate-thing (n)
   "Duplicate line or region N times.
-If it has active mark, it will expand the selection and duplicate it.
-If it doesn't have active mark, it will select current line and duplicate it."
+If it has active mark, it will duplicate the selection.
+If it doesn't have active mark, it will select current line and duplicate it.
+
+If the selection is smaller than a line, separations will be whitespace. Otherwise, separations will be newlines."
   (interactive "P")
-  (if mark-active
-      (duplicate-thing-expand-selection)
-    (duplicate-thing-select-current-line))
-  (let (p1 p2 len text with-comment-out)
-    (setq p1   (region-beginning)
-          p2   (region-end)
-          len  (- p2 p1)
-          text (buffer-substring p1 p2)
-          with-comment-out (consp n))
-    (if with-comment-out
+  (let ((region-is-whole-line (and (<= (region-beginning) (line-beginning-position))
+                                   (<= (line-end-position) (region-end)))))
+    (if (and mark-active (not region-is-whole-line))
         (progn
-          (comment-region p1 p2)
-          (duplicate-thing-at (point) text 1))
-      (duplicate-thing-at p2 text n)))
+          (kill-ring-save (region-beginning) (region-end))
+          (insert " ")
+          (yank)
+          (setq deactivate-mark nil))
+      (progn
+        (if mark-active
+            (duplicate-thing-expand-selection)
+          (duplicate-thing-select-current-line))
+        (let (p1 p2 len text with-comment-out)
+          (setq p1   (region-beginning)
+                p2   (region-end)
+                len  (- p2 p1)
+                text (buffer-substring p1 p2)
+                with-comment-out (consp n))
+          (insert "\n")
+          (duplicate-thing-at (point) text n)))))
   (setq transient-mark-mode (cons 'only t)))
 
 (provide 'duplicate-thing)
